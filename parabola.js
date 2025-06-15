@@ -1,4 +1,18 @@
 let coefficients;
+let wins = 0;
+let losses = 0;
+let currentQuestion = 'a';
+let correctAnswersCount = 0;
+
+// DOM элементы
+const winsElement = document.getElementById('wins');
+const lossesElement = document.getElementById('losses');
+const checkBtn = document.getElementById('check-btn');
+
+function updateScore() {
+    winsElement.textContent = wins;
+    lossesElement.textContent = losses;
+}
 
 function getRandomCoefficient(min, max, excludeMin = null, excludeMax = null) {
     let result;
@@ -9,9 +23,14 @@ function getRandomCoefficient(min, max, excludeMin = null, excludeMax = null) {
 }
 
 function generateParabolaData() {
-    const a = Math.random() < 0.5 ? -1 : 1;
-    const b = getRandomCoefficient(-5, 5, -2, 2);
-    const c = getRandomCoefficient(-10, 10, -2, 2);
+    // Случайно выбираем, будет ли a равно 0 (10% вероятность)
+    const a = Math.random() < 0.1 ? 0 : (Math.random() < 0.5 ? -1 : 1);
+
+    // Случайно выбираем, будет ли b равно 0 (10% вероятность)
+    const b = Math.random() < 0.1 ? 0 : getRandomCoefficient(-5, 5, -2, 2);
+
+    // Случайно выбираем, будет ли c равно 0 (10% вероятность)
+    const c = Math.random() < 0.1 ? 0 : getRandomCoefficient(-10, 10, -2, 2);
 
     const x = [];
     const y = [];
@@ -26,25 +45,69 @@ function createChart() {
     const { x, y, coefficients: coeff } = generateParabolaData();
     coefficients = coeff;
 
+    let equation;
+    if (coeff.a === 0) {
+        equation = `y = ${coeff.b.toFixed(2)}x + ${coeff.c.toFixed(2)}`;
+    } else {
+        equation = `y = ${coeff.a.toFixed(2)}x² + ${coeff.b.toFixed(2)}x + ${coeff.c.toFixed(2)}`;
+    }
+
     const trace = {
         x: x,
         y: y,
         mode: 'lines',
         type: 'scatter',
-        name: `y = ${coeff.a}x² + ${coeff.b.toFixed(2)}x + ${coeff.c.toFixed(2)}`
+        line: {
+            color: '#3498db',
+            width: 2
+        }
     };
 
     const layout = {
-        title: 'График параболы',
-        xaxis: { title: 'x', range: [-10, 10] },
-        yaxis: { title: 'y', range: [-20, 20] },
+        title: {
+            text: "График параболы", // Уравнение теперь в заголовке
+            font: {
+                size: 18
+            }
+        },
+        xaxis: {
+            title: 'x',
+            range: [-10, 10],
+            showgrid: true,
+            zeroline: true,
+            fixedrange: true
+        },
+        yaxis: {
+            title: 'y',
+            range: [-20, 20],
+            showgrid: true,
+            zeroline: true,
+            fixedrange: true
+        },
         autosize: true,
-        height: 600,
-        width: 800
+        height: 400,
+        width: 600,
+        margin: {
+            l: 60,
+            r: 30,
+            b: 60,
+            t: 80, // Увеличили верхний отступ для заголовка
+            pad: 4
+        },
+        showlegend: false, // Скрыли легенду полностью
+        dragmode: false,
+        hovermode: false
     };
 
-    Plotly.newPlot('chart-container', [trace], layout);
+    const config = {
+        displayModeBar: false,
+        staticPlot: true,
+        responsive: true
+    };
+
+    Plotly.newPlot('chart-container', [trace], layout, config);
 }
+
 
 function checkAnswer(select, coefficient) {
     const value = select.value;
@@ -56,20 +119,36 @@ function checkAnswer(select, coefficient) {
     else if (coefficient === 0 && value === 'zero') isCorrect = true;
 
     if (isCorrect) {
-        result.textContent = '✅';
-        result.className = 'correct';
+        result.textContent = '✓';
+        result.className = 'result-icon correct';
+        correctAnswersCount++;
     } else {
-        result.textContent = '❌';
-        result.className = 'incorrect';
+        result.textContent = '✗';
+        result.className = 'result-icon incorrect';
+        losses++;
+        updateScore();
+        disableAllSelects();
+        setTimeout(newGame, 1500);
     }
 
     return isCorrect;
 }
 
-function disableAllSelects() {
-    document.querySelectorAll('select').forEach(select => {
-        select.disabled = true;
+function resetQuiz() {
+    correctAnswersCount = 0;
+    document.querySelectorAll('.question').forEach(q => {
+        q.classList.add('hidden');
     });
+    document.querySelectorAll('select').forEach(select => {
+        select.value = '';
+        select.disabled = false;
+    });
+    document.querySelectorAll('.result-icon').forEach(span => {
+        span.textContent = '';
+        span.className = 'result-icon';
+    });
+    currentQuestion = 'a';
+    document.getElementById('a-question').classList.remove('hidden');
 }
 
 function setupQuiz() {
@@ -80,37 +159,60 @@ function setupQuiz() {
     const cQuestion = document.getElementById('c-question');
 
     aSelect.addEventListener('change', () => {
-        if (checkAnswer(aSelect, coefficients.a)) {
-            bQuestion.classList.remove('hidden');
-        } else {
-            disableAllSelects();
-        }
+        if (aSelect.value === '') return;
+
+        checkAnswer(aSelect, coefficients.a);
+        bQuestion.classList.remove('hidden');
+        currentQuestion = 'b';
     });
 
     bSelect.addEventListener('change', () => {
-        if (checkAnswer(bSelect, coefficients.b)) {
-            cQuestion.classList.remove('hidden');
-        } else {
-            disableAllSelects();
-        }
+        if (bSelect.value === '') return;
+
+        checkAnswer(bSelect, coefficients.b);
+        cQuestion.classList.remove('hidden');
+        currentQuestion = 'c';
     });
 
     cSelect.addEventListener('change', () => {
-        if (!checkAnswer(cSelect, coefficients.c)) {
-            disableAllSelects();
+        if (cSelect.value === '') return;
+
+        checkAnswer(cSelect, coefficients.c);
+
+        // Если все ответы правильные
+        if (correctAnswersCount === 3) {
+            wins++;
+            updateScore();
         }
+
+        disableAllSelects();
+        setTimeout(newGame, 1500);
     });
 }
 
-function setupRefreshButton() {
-    const refreshButton = document.getElementById('refresh-button');
-    refreshButton.addEventListener('click', () => {
-        location.reload();
+function disableAllSelects() {
+    document.querySelectorAll('select').forEach(select => {
+        select.disabled = true;
     });
+}
+
+function newGame() {
+    createChart();
+    resetQuiz();
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    createChart();
+    newGame();
     setupQuiz();
-    setupRefreshButton();
+    updateScore();
+
+    checkBtn.addEventListener('click', () => {
+        const currentSelect = document.getElementById(`${currentQuestion}-select`);
+        if (currentSelect.value === '') {
+            alert('Пожалуйста, выберите ответ');
+            return;
+        }
+
+        currentSelect.dispatchEvent(new Event('change'));
+    });
 });
