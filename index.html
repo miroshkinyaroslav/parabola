@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>График параболы с проверкой</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        .hidden {
+            display: none;
+        }
+
+        .correct {
+            color: green;
+        }
+
+        .incorrect {
+            color: red;
+        }
+
+        #refresh-button {
+            background-color: blue;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="chart-container"></div>
+    <div id="quiz-container">
+        <div id="a-question">
+            <label for="a-select">Выберите знак a:</label>
+            <select id="a-select">
+                <option value="">Выберите ответ</option>
+                <option value="positive">a > 0</option>
+                <option value="negative">a < 0</option>
+            </select>
+            <span id="a-result"></span>
+        </div>
+        <div id="b-question" class="hidden">
+            <label for="b-select">Выберите знак b:</label>
+            <select id="b-select">
+                <option value="">Выберите ответ</option>
+                <option value="positive">b > 0</option>
+                <option value="negative">b < 0</option>
+            </select>
+            <span id="b-result"></span>
+        </div>
+        <div id="c-question" class="hidden">
+            <label for="c-select">Выберите знак c:</label>
+            <select id="c-select">
+                <option value="">Выберите ответ</option>
+                <option value="positive">c > 0</option>
+                <option value="negative">c < 0</option>
+                <option value="zero">c = 0</option>
+            </select>
+            <span id="c-result"></span>
+        </div>
+    </div>
+    <button id="refresh-button">Обновить страницу</button>
+    <script src="parabola.js"></script>
+</body>
+
+</html>
