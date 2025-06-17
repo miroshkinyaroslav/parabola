@@ -1,13 +1,45 @@
+// Дополнительная защита от открытия консоли
+(function () {
+    function blockConsoleOpen() {
+        // Переопределяем функцию console.log
+        const originalConsoleLog = console.log;
+        console.log = function () {
+            showCustomAlert();
+            originalConsoleLog.apply(console, arguments);
+        };
+
+        // Перехватываем ошибки, которые могут открыть консоль
+        window.onerror = function () {
+            return true;
+        };
+    }
+
+    // Пытаемся заблокировать несколько раз, так как некоторые методы защиты могут быть обойдены
+    blockConsoleOpen();
+    setInterval(blockConsoleOpen, 1000);
+})();
+
+
 let coefficients;
 let wins = 0;
 let losses = 0;
 let currentQuestion = 'a';
 let correctAnswersCount = 0;
+let timerOn = false;
+let timerSec = 15;
+let tRemain = 15;
+let tId = null;
+let firstRoundStarted = false;
 
 // DOM элементы
 const winsElement = document.getElementById('wins');
 const lossesElement = document.getElementById('losses');
+const timerElement = document.getElementById('timer');
+const timerBox = document.getElementById('timer-box');
 const checkBtn = document.getElementById('check-btn');
+const timerEnable = document.getElementById('timer-enable');
+const timerSeconds = document.getElementById('timer-seconds');
+const timerSettingsBox = document.getElementById('timer-settings-box');
 
 function updateScore() {
     winsElement.textContent = wins;
@@ -23,14 +55,14 @@ function getRandomCoefficient(min, max, excludeMin = null, excludeMax = null) {
 }
 
 function generateParabolaData() {
-    // Случайно выбираем, будет ли a равно 0 (10% вероятность)
-    const a = Math.random() < 0.1 ? 0 : (Math.random() < 0.5 ? -1 : 1);
+    // Случайно выбираем, будет ли a равно 0 (15% вероятность)
+    const a = Math.random() < 0.15 ? 0 : (Math.random() < 0.5 ? -1 : 1);
 
-    // Случайно выбираем, будет ли b равно 0 (10% вероятность)
-    const b = Math.random() < 0.1 ? 0 : getRandomCoefficient(-5, 5, -2, 2);
+    // Случайно выбираем, будет ли b равно 0 (15% вероятность)
+    const b = Math.random() < 0.15 ? 0 : getRandomCoefficient(-5, 5, -2, 2);
 
-    // Случайно выбираем, будет ли c равно 0 (10% вероятность)
-    const c = Math.random() < 0.1 ? 0 : getRandomCoefficient(-10, 10, -2, 2);
+    // Случайно выбираем, будет ли c равно 0 (15% вероятность)
+    const c = Math.random() < 0.15 ? 0 : getRandomCoefficient(-10, 10, -2, 2);
 
     const x = [];
     const y = [];
@@ -65,7 +97,7 @@ function createChart() {
 
     const layout = {
         title: {
-            text: "График параболы", // Уравнение теперь в заголовке
+            text: "График параболы",
             font: {
                 size: 18
             }
@@ -91,10 +123,10 @@ function createChart() {
             l: 60,
             r: 30,
             b: 60,
-            t: 80, // Увеличили верхний отступ для заголовка
+            t: 80,
             pad: 4
         },
-        showlegend: false, // Скрыли легенду полностью
+        showlegend: false,
         dragmode: false,
         hovermode: false
     };
@@ -107,7 +139,6 @@ function createChart() {
 
     Plotly.newPlot('chart-container', [trace], layout, config);
 }
-
 
 function checkAnswer(select, coefficient) {
     const value = select.value;
@@ -128,6 +159,7 @@ function checkAnswer(select, coefficient) {
         losses++;
         updateScore();
         disableAllSelects();
+        stopTimer();
         setTimeout(newGame, 1500);
     }
 
@@ -151,6 +183,55 @@ function resetQuiz() {
     document.getElementById('a-question').classList.remove('hidden');
 }
 
+function startTimer() {
+    tRemain = timerSec;
+    updateTimer();
+
+    tId = setInterval(() => {
+        tRemain--;
+        updateTimer();
+
+        if (tRemain <= 0) {
+            clearInterval(tId);
+            losses++;
+            updateScore();
+            disableAllSelects();
+            setTimeout(newGame, 1500);
+        }
+    }, 1000);
+}
+
+function stopTimer() {
+    clearInterval(tId);
+}
+
+function updateTimer() {
+    timerElement.textContent = tRemain;
+}
+
+function readTimerSettings() {
+    timerOn = timerEnable.checked;
+    timerSec = parseInt(timerSeconds.value) || 15;
+    tRemain = timerSec;
+    updateTimer();
+
+    if (timerOn) {
+        timerSettingsBox.classList.remove('hidden');
+        timerBox.classList.remove('hidden');
+    } else {
+        timerSettingsBox.classList.add('hidden');
+        timerBox.classList.add('hidden');
+        stopTimer();
+    }
+}
+
+function newGame() {
+    stopTimer();
+    createChart();
+    resetQuiz();
+    if (timerOn) startTimer();
+}
+
 function setupQuiz() {
     const aSelect = document.getElementById('a-select');
     const bSelect = document.getElementById('b-select');
@@ -160,6 +241,12 @@ function setupQuiz() {
 
     aSelect.addEventListener('change', () => {
         if (aSelect.value === '') return;
+
+        if (!firstRoundStarted) {
+            firstRoundStarted = true;
+            timerEnable.disabled = true;
+            timerSeconds.disabled = true;
+        }
 
         checkAnswer(aSelect, coefficients.a);
         bQuestion.classList.remove('hidden');
@@ -186,6 +273,7 @@ function setupQuiz() {
         }
 
         disableAllSelects();
+        stopTimer();
         setTimeout(newGame, 1500);
     });
 }
@@ -196,15 +284,9 @@ function disableAllSelects() {
     });
 }
 
-function newGame() {
-    createChart();
-    resetQuiz();
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-    newGame();
-    setupQuiz();
-    updateScore();
+function setupEventListeners() {
+    timerEnable.addEventListener('change', readTimerSettings);
+    timerSeconds.addEventListener('input', readTimerSettings);
 
     checkBtn.addEventListener('click', () => {
         const currentSelect = document.getElementById(`${currentQuestion}-select`);
@@ -215,4 +297,99 @@ document.addEventListener('DOMContentLoaded', () => {
 
         currentSelect.dispatchEvent(new Event('change'));
     });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    setupEventListeners();
+    setupQuiz();
+    readTimerSettings();
+    newGame();
+    updateScore();
+});
+
+// Блокировка F12 и консоли разработчика
+document.addEventListener('keydown', function (e) {
+    // Блокировка F12
+    if (e.key === 'F12' || e.keyCode === 123) {
+        e.preventDefault();
+        showCustomAlert();
+        return false;
+    }
+
+    // Блокировка Ctrl+Shift+I (Chrome), Ctrl+Shift+J (Chrome), Ctrl+Shift+C (Chrome)
+    if ((e.ctrlKey && e.shiftKey && e.key === 'I') ||
+        (e.ctrlKey && e.shiftKey && e.key === 'J') ||
+        (e.ctrlKey && e.shiftKey && e.key === 'C') ||
+        (e.ctrlKey && e.key === 'U')) {
+        e.preventDefault();
+        showCustomAlert();
+        return false;
+    }
+});
+
+// Показ красивого alert вместо стандартного
+function showCustomAlert() {
+    // Создаем модальное окно
+    const modal = document.createElement('div');
+    modal.style.position = 'fixed';
+    modal.style.top = '0';
+    modal.style.left = '0';
+    modal.style.width = '100%';
+    modal.style.height = '100%';
+    modal.style.backgroundColor = 'rgba(0,0,0,0.5)';
+    modal.style.display = 'flex';
+    modal.style.justifyContent = 'center';
+    modal.style.alignItems = 'center';
+    modal.style.zIndex = '9999';
+
+    // Создаем содержимое модального окна
+    const content = document.createElement('div');
+    content.style.backgroundColor = 'white';
+    content.style.padding = '30px';
+    content.style.borderRadius = '10px';
+    content.style.maxWidth = '400px';
+    content.style.textAlign = 'center';
+    content.style.boxShadow = '0 5px 15px rgba(0,0,0,0.3)';
+
+    // Заголовок
+    const title = document.createElement('h2');
+    title.textContent = 'Доступ ограничен';
+    title.style.color = '#e74c3c';
+    title.style.marginTop = '0';
+
+    // Текст сообщения
+    const message = document.createElement('p');
+    message.textContent = 'Консоль разработчика не доступна на этом сайте.';
+    message.style.fontSize = '16px';
+    message.style.margin = '20px 0';
+
+    // Кнопка OK
+    const okButton = document.createElement('button');
+    okButton.textContent = 'OK';
+    okButton.style.padding = '10px 20px';
+    okButton.style.backgroundColor = '#3498db';
+    okButton.style.color = 'white';
+    okButton.style.border = 'none';
+    okButton.style.borderRadius = '5px';
+    okButton.style.cursor = 'pointer';
+    okButton.style.fontSize = '16px';
+    okButton.addEventListener('click', function () {
+        document.body.removeChild(modal);
+    });
+
+    // Собираем модальное окно
+    content.appendChild(title);
+    content.appendChild(message);
+    content.appendChild(okButton);
+    modal.appendChild(content);
+
+    // Добавляем модальное окно на страницу
+    document.body.appendChild(modal);
+}
+
+// Блокировка контекстного меню
+document.addEventListener('contextmenu', function (e) {
+    e.preventDefault();
+    showCustomAlert();
+    return false;
 });

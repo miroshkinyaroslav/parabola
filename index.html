@@ -12,14 +12,30 @@
 <body>
     <div class="container">
         <h1>Анализ параболы</h1>
+
+        <div class="timer-settings">
+            <label>
+                <input type="checkbox" id="timer-enable">
+                Включить таймер
+            </label>
+            <div id="timer-settings-box" class="hidden">
+                <input type="number" id="timer-seconds" min="10" max="120" value="15">
+                <span>секунд</span>
+            </div>
+        </div>
+
         <div class="score">
             <div class="score-box">
-                <span>Правильно:</span>
+                <span>Победы:</span>
                 <span id="wins">0</span>
             </div>
             <div class="score-box">
-                <span>Ошибки:</span>
+                <span>Поражения:</span>
                 <span id="losses">0</span>
+            </div>
+            <div id="timer-box" class="score-box hidden">
+                <span>Время:</span>
+                <span id="timer">15</span>
             </div>
         </div>
 
@@ -63,6 +79,8 @@
                     </select>
                     <span id="c-result" class="result-icon"></span>
                 </div>
+
+                <button id="check-btn">Проверить</button>
             </div>
         </div>
     </div>
